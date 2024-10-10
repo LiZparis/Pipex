@@ -6,7 +6,7 @@
 /*   By: lzhang2 <lzhang2@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/20 14:08:08 by lzhang2           #+#    #+#             */
-/*   Updated: 2024/10/08 14:19:52 by lzhang2          ###   ########.fr       */
+/*   Updated: 2024/10/10 15:30:50 by lzhang2          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,6 +44,8 @@ size_t	print_pointer(void *ptr);
 
 /*spplement*/
 char	*ft_strappend(char **s1, const char *s2);
+char	*ft_strcat(char *dest, const char *src);
+char	*ft_strcpy(char *dest, const char *src);
 
 /* Libc functions */
 int		ft_isalpha(int c);

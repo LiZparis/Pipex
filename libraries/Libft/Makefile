@@ -6,7 +6,7 @@
 #    By: lzhang2 <lzhang2@student.42.fr>            +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/05/27 09:40:23 by lzhang2           #+#    #+#              #
-#    Updated: 2024/10/08 14:15:08 by lzhang2          ###   ########.fr        #
+#    Updated: 2024/10/10 15:17:57 by lzhang2          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -60,7 +60,9 @@ SRCS = ft_isalpha.c					\
 	   print_string.c 				\
 	   print_unsigned_10.c			\
 	   get_next_line.c				\
-	   ft_strappend.c
+	   ft_strappend.c				\
+	   ft_strcat.c					\
+	   ft_strcpy.c
 	   
 SRCS_BONUS = ft_lstnew.c			\
 			 ft_lstadd_front.c		\

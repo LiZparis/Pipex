@@ -13,7 +13,11 @@ CFLAGS = -Wall -Werror -Wextra -g3
 SRCS_DIR        = ./sources/
 BONUS_SRCS_DIR  = ./bonus_sources/
 
-SRCS = $(SRCS_DIR)pipex.c
+SRCS 			= $(addprefix $(SRCS_DIR), 	\
+				pipex.c  					\
+				free.c						\
+				find_executable.c			\
+				execute_cmd.c)
 # SRCS_BONUS = $(BONUS_SRCS_DIR)pipex_bonus.c
 
 OBJS = $(SRCS:.c=.o)
