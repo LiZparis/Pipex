@@ -17,9 +17,9 @@
 # include <unistd.h>
 # include <limits.h>
 /*ssize_t*/
-# include<sys/types.h>
+# include <sys/types.h>
 /*read函数 open函数*/
-# include<fcntl.h>
+# include <fcntl.h>
 /*printf*/
 # include <stdarg.h>
 # include <stdint.h>

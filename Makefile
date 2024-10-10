@@ -8,7 +8,7 @@ RESET           = \033[0m
 LIBFT           = ./libraries/Libft/libft.a
 CC = cc
 INCLUDE_DIRS    = -I./libraries/Libft
-CFLAGS = -Wall -Werror -Wextra
+CFLAGS = -Wall -Werror -Wextra -g3
 
 SRCS_DIR        = ./sources/
 BONUS_SRCS_DIR  = ./bonus_sources/
