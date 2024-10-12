@@ -6,7 +6,7 @@
 /*   By: lzhang2 <lzhang2@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/10 15:14:34 by lzhang2           #+#    #+#             */
-/*   Updated: 2024/10/10 20:36:46 by lzhang2          ###   ########.fr       */
+/*   Updated: 2024/10/12 14:11:07 by lzhang2          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,17 +27,17 @@ void	ft_free_split(char **split)
 	free(split);
 }
 
-void	ft_free_prog(t_prog *prog)
+void	ft_free_prog(t_prog **prog)
 {
-	if (prog)
+	if (*prog)
 	{
-		close_unneeded_fds(prog);
-		free(prog);
-		prog = NULL;
+		close_unneeded_fd(*prog);
+		close_unneeded_pipe(*prog);
+		free(*prog);
+		*prog = NULL;
 	}
 }
-
-void	close_unneeded_fds(t_prog *prog)
+void close_unneeded_fd(t_prog *prog)
 {
 	if (prog)
 	{
@@ -45,6 +45,13 @@ void	close_unneeded_fds(t_prog *prog)
 			close(prog->infile);
 		if (prog->outfile != -1)
 			close(prog->outfile);
+	}
+}
+
+void	close_unneeded_pipe(t_prog *prog)
+{
+	if (prog)
+	{
 		if (prog->pipe_fd[0] != -1)
 			close(prog->pipe_fd[0]);
 		if (prog->pipe_fd[1] != -1)

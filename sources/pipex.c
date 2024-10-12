@@ -6,7 +6,7 @@
 /*   By: lzhang2 <lzhang2@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/10 17:19:46 by lzhang2           #+#    #+#             */
-/*   Updated: 2024/10/10 21:14:33 by lzhang2          ###   ########.fr       */
+/*   Updated: 2024/10/12 18:25:53 by lzhang2          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,27 +23,51 @@ void	init_struct_prog(t_prog *prog)
 	prog->is_1st_cmd = false;
 }
 
-void	ft_check_param(t_prog *prog, int argc, char **argv)
+void	check_infile(t_prog *prog, char *infile)
+{
+	prog->infile = open(infile, O_RDONLY);
+	if (prog->infile < 0)
+	{
+		if (errno == EACCES)
+		{
+			perror(infile);
+			ft_free_prog(&prog);
+			exit(EXIT_FAILURE);
+		}
+		else if (errno == ENOENT || errno == EISDIR)
+		{
+			perror(infile);
+			ft_free_prog(&prog);
+			exit(EXIT_FAILURE);
+		}
+	}
+}
+void	check_outfile(t_prog *prog, char *outfile)
+{
+	prog->outfile = open(outfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	if (prog->outfile < 0)
+	{
+		if (errno == EACCES)
+		{
+			perror(outfile);
+			ft_free_prog(&prog);
+			exit(EXIT_FAILURE);
+		}
+		else
+		{
+			perror(outfile);
+			ft_free_prog(&prog);
+			exit(EXIT_FAILURE);
+		}
+	}
+}
+
+void	ft_check_param(t_prog *prog, int argc)
 {
 	if (argc != 5)
 	{
 		ft_putstr_fd("argc should be 5\n", 2);
-		ft_free_prog(prog);
-		exit(EXIT_FAILURE);
-	}
-	prog->infile = open(argv[1], O_RDONLY);
-	if (prog->infile < 0)
-	{
-		ft_putstr_fd("Failed to open infile\n", 2);
-		ft_free_prog(prog);
-		exit(EXIT_FAILURE);
-	}
-	prog->outfile = open(argv[4], O_WRONLY | O_TRUNC, 0644);
-	if (prog->outfile < 0)
-	{
-		ft_putstr_fd("Failed to open outfile", 2);
-		close(prog->infile);
-		ft_free_prog(prog);
+		ft_free_prog(&prog);
 		exit(EXIT_FAILURE);
 	}
 }
@@ -56,7 +80,7 @@ char	*ft_get_path_env(char **envp)
 	while (envp[i])
 	{
 		if (ft_strncmp(envp[i], "PATH=", 5) == 0)
-			return(envp[i] + 5);
+			return (envp[i] + 5);
 		i++;
 	}
 	ft_putstr_fd("can't find env path", 2);
@@ -64,28 +88,28 @@ char	*ft_get_path_env(char **envp)
 }
 
 
-char *build_full_path(const char *dir, const char *command)
+char	*build_full_path(const char *dir, const char *command)
 {
-    char *full_path;
-	
+	char	*full_path;
+
 	full_path = malloc(ft_strlen(dir) + ft_strlen(command) + 2);
-    if (!full_path)
-        return NULL;
-    ft_strcpy(full_path, dir);
-    ft_strcat(full_path, "/");
-    ft_strcat(full_path, command);
-    
-    return full_path;
+	if (!full_path)
+		return (NULL);
+	ft_strcpy(full_path, dir);
+	ft_strcat(full_path, "/");
+	ft_strcat(full_path, command);
+
+	return (full_path);
 }
 
-char *find_abs_cmd(char *command)
+char	*find_abs_cmd(char *command)
 {
 	if (command[0] == '/' || command[0] == '.')
-    {
-        if (access(command, X_OK) == 0)
-            return (ft_strdup(command)); // 返回命令的副本
+	{
+		if (access(command, X_OK) == 0)
+			return (command);
 	}
-    return (NULL); // 绝对路径不可执行
+	return (NULL);
 }
 
 char	*find_executable(char *command, char **envp)
@@ -95,9 +119,9 @@ char	*find_executable(char *command, char **envp)
 	char	*full_path;
 	int		i;
 	char	*abs_cmd;
-	
+
 	abs_cmd = find_abs_cmd(command);
-	if(abs_cmd)
+	if (abs_cmd)
 		return (abs_cmd);
 	path_env = ft_get_path_env(envp);
 	if (!path_env)
@@ -122,18 +146,18 @@ char	*find_executable(char *command, char **envp)
 
 void is_execvable(t_prog *prog, char *path, char **args, char **envp)
 {
+	(void)prog;
 	if (execve(path, args, envp) == -1)
 	{
 		perror("execve");
 		free(path);
 		ft_free_split(args);
-		ft_free_prog(prog);
 		exit(126);
 	}
 	free(path);
 	ft_free_split(args);
 }
-	
+
 void	execute_command(t_prog *prog, char *cmd, char **envp)
 {
 	char	**args;
@@ -143,19 +167,23 @@ void	execute_command(t_prog *prog, char *cmd, char **envp)
 	if (!args)
 	{
 		ft_putstr_fd("Error: Failed to split command\n", 2);
-		ft_free_prog(prog);
 		exit(EXIT_FAILURE);
 	}
 	path = find_executable(args[0], envp);
 	if (!path)
 	{
 		ft_free_split(args);
-		ft_free_prog(prog);
 		ft_putstr_fd("Error: Command not found\n", 2);
-		if(prog->is_1st_cmd == true)
-			exit(0);
-		else if(prog->is_1st_cmd == false)
+		if (prog->is_1st_cmd == true)
+		{
+			ft_free_prog(&prog);
+			exit(EXIT_FAILURE);
+		}
+		else if (prog->is_1st_cmd == false)
+		{
+			ft_free_prog(&prog);
 			exit(127);
+		}
 	}
 	is_execvable(prog, path, args, envp);
 }
@@ -163,83 +191,63 @@ void	execute_command(t_prog *prog, char *cmd, char **envp)
 void	ft_child_1(t_prog *prog, char **argv, char **envp)
 {
 	prog->pid1 = fork();
-	if (prog->pid1 == 0) // 子进程 1
+	if (prog->pid1 == 0)
 	{
-		dup2(prog->infile, STDIN_FILENO); // 将 infile 重定向到标准输入
-		dup2(prog->pipe_fd[1], STDOUT_FILENO); // 将管道的写端重定向到标准输出
-		close(prog->infile); // 关闭不再需要的文件描述符
-		close_unneeded_fds(prog); // 关闭所有不需要的文件描述符
-		prog->is_1st_cmd = true; // 标记为第一个命令
-		execute_command(prog, argv[2], envp); // 执行命令
+		check_infile(prog, argv[1]);
+		if ((dup2(prog->infile, STDIN_FILENO) == -1)
+			|| (dup2(prog->pipe_fd[1], STDOUT_FILENO) == -1))
+		{
+			ft_putstr_fd("Failed to duplicate infile to stdin", 2);
+			ft_free_prog(&prog);
+			exit(EXIT_FAILURE);
+		}
+		close_unneeded_fd(prog);
+		close_unneeded_pipe(prog);
+		prog->is_1st_cmd = true;
+		execute_command(prog, argv[2], envp);
 	}
 }
 
 void	ft_child_2(t_prog *prog, char **argv, char **envp)
 {
+
 	prog->pid2 = fork();
-	if (prog->pid2 == 0) // 子进程 2
+	if (prog->pid2 == 0)
 	{
-		dup2(prog->pipe_fd[0], STDIN_FILENO); // 将管道的读端重定向到标准输入
-		dup2(prog->outfile, STDOUT_FILENO); // 将 outfile 重定向到标准输出
-		close(prog->outfile); // 关闭不再需要的文件描述符
-		close_unneeded_fds(prog); // 关闭所有不需要的文件描述符
-		prog->is_1st_cmd = false; // 标记为第二个命令
-		execute_command(prog, argv[3], envp); // 执行命令
+		check_outfile(prog, argv[4]);
+		if ((dup2(prog->pipe_fd[0], STDIN_FILENO) == -1)
+			|| dup2(prog->outfile, STDOUT_FILENO) == -1)
+		{
+			ft_putstr_fd("Failed to duplicate infile to stdout", 2);
+			ft_free_prog(&prog);
+			exit(EXIT_FAILURE);
+		}
+		close_unneeded_fd(prog);
+		close_unneeded_pipe(prog);
+		prog->is_1st_cmd = false;
+		execute_command(prog, argv[3], envp);
 	}
 }
 
-// void	wait_for_children(t_prog *prog) 
-// {
-//     int status;
-
-//     waitpid(prog->pid1, &status, 0);
-//     if (WIFEXITED(status))
-//         ft_printf("child 1 exited with status: %d\n", WEXITSTATUS(status));
-//     else
-//         ft_printf("child 1 did not exit normally\n");
-
-//     waitpid(prog->pid2, &status, 0);
-//     if (WIFEXITED(status))
-//         ft_printf("child 2 exited with status: %d\n", WEXITSTATUS(status));
-//     else
-//         ft_printf("child 2 did not exit normally\n");
-// }
-void wait_for_children(t_prog *prog)
+int	wait_for_children(pid_t pid2)
 {
-    int status1, status2;
+	int		status;
+	pid_t	pid;
+	int		exit_status;
 
-    // 等待 child 1 结束
-    waitpid(prog->pid1, &status1, 0);
-    if (WIFEXITED(status1))
-    {
-        int exit_status = WEXITSTATUS(status1);
-        ft_printf("child 1 exited with status: %d\n", exit_status);
-        // 如果 child 1 失败（非零退出码），则退出程序
-        if (exit_status != 0)
-			exit(exit_status);
-    }
-    else
-    {
-        ft_printf("child 1 did not exit normally\n");
-        exit(1); // 子进程异常退出，父进程也退出
-    }
-    waitpid(prog->pid2, &status2, 0);
-    if (WIFEXITED(status2))
-    {
-        int exit_status = WEXITSTATUS(status2);
-        ft_printf("child 2 exited with status: %d\n", exit_status);
-        // 如果 child 2 失败（非零退出码），则退出程序
-        if (exit_status != 0)
-            exit(exit_status);
-    }
-    else
-    {
-        ft_printf("child 2 did not exit normally\n");
-        exit(1); // 子进程异常退出，父进程也退出
-    }
+	exit_status = 0;
+	while ((pid = waitpid(-1, &status, 0)) > 0)
+	{
+		// if (WIFEXITED(status))
+		// 	ft_printf("Child %d exited with status %d\n", pid, WEXITSTATUS(status));
+		// else if (WIFSIGNALED(status))
+		// 	ft_printf("Child %d was killed by signal %d\n", pid, WTERMSIG(status));
+
+		if (pid == pid2 && WIFEXITED(status))
+			exit_status = WEXITSTATUS(status);
+	}
+	return (exit_status);
 }
-
-
 
 int	main(int argc, char **argv, char **envp)
 {
@@ -248,16 +256,26 @@ int	main(int argc, char **argv, char **envp)
 	if (!prog)
 		return (1);
 	init_struct_prog(prog);
-	ft_check_param(prog, argc, argv);
+	ft_check_param(prog, argc);
 	if (pipe(prog->pipe_fd) == -1)
 	{
 		ft_putstr_fd("pipe failed", 2);
-		ft_free_prog(prog);
+		ft_free_prog(&prog);
 		return (1);
 	}
 	ft_child_1(prog, argv, envp);
 	ft_child_2(prog, argv, envp);
-	wait_for_children(prog);
-	ft_free_prog(prog);
-	return (0);
+	close_unneeded_pipe(prog);
+	int exit_status = wait_for_children(prog->pid2);
+    
+    ft_free_prog(&prog);  // 确保释放 prog
+	free(prog);
+
+    return (exit_status);
 }
+
+/*strace -e signal=SIGPIPE -o trace.log < input /usr/bin/cat | /usr/bin/wcgd > output
+*/
+/*valgrind --leak-check=full --show-leak-kinds=all --trace-children=yes ./pipex input /usr/bin/cat dls output
+
+*/
