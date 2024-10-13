@@ -6,7 +6,7 @@
 /*   By: lzhang2 <lzhang2@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/10 17:19:46 by lzhang2           #+#    #+#             */
-/*   Updated: 2024/10/12 18:25:53 by lzhang2          ###   ########.fr       */
+/*   Updated: 2024/10/13 17:06:54 by lzhang2          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,36 +29,25 @@ void	check_infile(t_prog *prog, char *infile)
 	if (prog->infile < 0)
 	{
 		if (errno == EACCES)
-		{
 			perror(infile);
-			ft_free_prog(&prog);
-			exit(EXIT_FAILURE);
-		}
 		else if (errno == ENOENT || errno == EISDIR)
-		{
 			perror(infile);
-			ft_free_prog(&prog);
-			exit(EXIT_FAILURE);
-		}
+		ft_free_prog(&prog);
+		exit(EXIT_FAILURE);
 	}
 }
+
 void	check_outfile(t_prog *prog, char *outfile)
 {
 	prog->outfile = open(outfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	if (prog->outfile < 0)
 	{
 		if (errno == EACCES)
-		{
 			perror(outfile);
-			ft_free_prog(&prog);
-			exit(EXIT_FAILURE);
-		}
 		else
-		{
 			perror(outfile);
-			ft_free_prog(&prog);
-			exit(EXIT_FAILURE);
-		}
+		ft_free_prog(&prog);
+		exit(EXIT_FAILURE);
 	}
 }
 
@@ -98,31 +87,45 @@ char	*build_full_path(const char *dir, const char *command)
 	ft_strcpy(full_path, dir);
 	ft_strcat(full_path, "/");
 	ft_strcat(full_path, command);
-
 	return (full_path);
 }
 
-char	*find_abs_cmd(char *command)
+char	*is_accessible(t_prog *prog, char *command)
 {
-	if (command[0] == '/' || command[0] == '.')
+	if (access(command, F_OK) == 0)
 	{
-		if (access(command, X_OK) == 0)
-			return (command);
+		if (access(command, X_OK) == -1)
+		{
+			perror("Permission denied for commande");
+			ft_free_prog(&prog);
+			exit(126);
+		}
+		return (command);
 	}
 	return (NULL);
 }
 
-char	*find_executable(char *command, char **envp)
+char	*find_abs_cmd(t_prog *prog, char *command)
+{
+	char	*access_ok;
+
+	if (command[0] == '.' || command[0] == '/')
+	{
+		access_ok = is_accessible(prog, command);
+		if (access_ok)
+			return (access_ok);
+	}
+	return (NULL);
+}
+
+char	*find_executable(t_prog *prog, char *command, char **envp)
 {
 	char	*path_env;
 	char	**paths;
 	char	*full_path;
 	int		i;
-	char	*abs_cmd;
+	char	*access_ok;
 
-	abs_cmd = find_abs_cmd(command);
-	if (abs_cmd)
-		return (abs_cmd);
 	path_env = ft_get_path_env(envp);
 	if (!path_env)
 		return (NULL);
@@ -132,30 +135,46 @@ char	*find_executable(char *command, char **envp)
 	i = -1;
 	while (paths[++i])
 	{
-		full_path = build_full_path(paths[i], command); 
-		if (access(full_path, X_OK) == 0)
+		full_path = build_full_path(paths[i], command);
+		if (full_path)
 		{
-			ft_free_split(paths);
-			return (full_path);
+			access_ok = is_accessible(prog, full_path);
+			if (access_ok)
+			{
+				ft_free_split(paths);
+				return (access_ok);
+			}
+			free(full_path);
 		}
-		free(full_path);
 	}
 	ft_free_split(paths);
 	return (NULL);
 }
 
-void is_execvable(t_prog *prog, char *path, char **args, char **envp)
+void	is_1st_or_2nd(t_prog *prog)
 {
-	(void)prog;
+	if (prog->is_1st_cmd == true)
+	{
+		ft_free_prog(&prog);
+		exit(EXIT_FAILURE);
+	}
+	else if (prog->is_1st_cmd == false)
+	{
+		ft_free_prog(&prog);
+		exit(127);
+	}
+}
+
+void	is_execvable(t_prog *prog, char *path, char **args, char **envp)
+{
 	if (execve(path, args, envp) == -1)
 	{
 		perror("execve");
 		free(path);
 		ft_free_split(args);
-		exit(126);
+		is_1st_or_2nd(prog);
 	}
-	free(path);
-	ft_free_split(args);
+
 }
 
 void	execute_command(t_prog *prog, char *cmd, char **envp)
@@ -163,29 +182,27 @@ void	execute_command(t_prog *prog, char *cmd, char **envp)
 	char	**args;
 	char	*path;
 
-	args = ft_split(cmd, ' ');
-	if (!args)
-	{
-		ft_putstr_fd("Error: Failed to split command\n", 2);
-		exit(EXIT_FAILURE);
-	}
-	path = find_executable(args[0], envp);
+	args = NULL;
+	path = find_abs_cmd(prog, cmd);
 	if (!path)
 	{
-		ft_free_split(args);
-		ft_putstr_fd("Error: Command not found\n", 2);
-		if (prog->is_1st_cmd == true)
+		args = ft_split(cmd, ' ');
+		if (!args)
 		{
-			ft_free_prog(&prog);
+			ft_putstr_fd("Error: Failed to split command\n", 2);
 			exit(EXIT_FAILURE);
 		}
-		else if (prog->is_1st_cmd == false)
+		path = find_executable(prog, args[0], envp);
+		if (!path)
 		{
-			ft_free_prog(&prog);
-			exit(127);
+			ft_free_split(args);
+			ft_putstr_fd("Error: Command not found\n", 2);
+			is_1st_or_2nd(prog);
 		}
 	}
 	is_execvable(prog, path, args, envp);
+	free(path);
+	ft_free_split(args);
 }
 
 void	ft_child_1(t_prog *prog, char **argv, char **envp)
@@ -229,24 +246,21 @@ void	ft_child_2(t_prog *prog, char **argv, char **envp)
 	}
 }
 
-int	wait_for_children(pid_t pid2)
+int wait_for_children(pid_t pid1, pid_t pid2)
 {
-	int		status;
-	pid_t	pid;
-	int		exit_status;
+    int status;
+    int exit_status = 0;
 
-	exit_status = 0;
-	while ((pid = waitpid(-1, &status, 0)) > 0)
-	{
-		// if (WIFEXITED(status))
-		// 	ft_printf("Child %d exited with status %d\n", pid, WEXITSTATUS(status));
-		// else if (WIFSIGNALED(status))
-		// 	ft_printf("Child %d was killed by signal %d\n", pid, WTERMSIG(status));
-
-		if (pid == pid2 && WIFEXITED(status))
-			exit_status = WEXITSTATUS(status);
-	}
-	return (exit_status);
+    for (int i = 0; i < 2; i++)
+    {
+        pid_t pid = wait(&status);
+        if (pid == pid1 || pid == pid2)
+        {
+            if (WIFEXITED(status))
+                exit_status = WEXITSTATUS(status);
+        }
+    }
+    return exit_status;
 }
 
 int	main(int argc, char **argv, char **envp)
@@ -266,11 +280,9 @@ int	main(int argc, char **argv, char **envp)
 	ft_child_1(prog, argv, envp);
 	ft_child_2(prog, argv, envp);
 	close_unneeded_pipe(prog);
-	int exit_status = wait_for_children(prog->pid2);
-    
+	int exit_status = wait_for_children(prog->pid1, prog->pid2);
     ft_free_prog(&prog);  // 确保释放 prog
-	free(prog);
-
+	printf("Program exiting with status %d\n", exit_status);
     return (exit_status);
 }
 
