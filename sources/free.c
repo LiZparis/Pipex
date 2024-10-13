@@ -6,7 +6,7 @@
 /*   By: lzhang2 <lzhang2@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/10 15:14:34 by lzhang2           #+#    #+#             */
-/*   Updated: 2024/10/12 14:11:07 by lzhang2          ###   ########.fr       */
+/*   Updated: 2024/10/13 19:32:34 by lzhang2          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,7 +37,8 @@ void	ft_free_prog(t_prog **prog)
 		*prog = NULL;
 	}
 }
-void close_unneeded_fd(t_prog *prog)
+
+void	close_unneeded_fd(t_prog *prog)
 {
 	if (prog)
 	{
@@ -59,6 +60,16 @@ void	close_unneeded_pipe(t_prog *prog)
 	}
 }
 
-
-
-
+void	is_1st_or_2nd(t_prog *prog)
+{
+	if (prog->is_1st_cmd == true)
+	{
+		ft_free_prog(&prog);
+		exit(EXIT_FAILURE);
+	}
+	else if (prog->is_1st_cmd == false)
+	{
+		ft_free_prog(&prog);
+		exit(127);
+	}
+}

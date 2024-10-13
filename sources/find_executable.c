@@ -1,93 +1,98 @@
-// /* ************************************************************************** */
-// /*                                                                            */
-// /*                                                        :::      ::::::::   */
-// /*   execute.c                                          :+:      :+:    :+:   */
-// /*                                                    +:+ +:+         +:+     */
-// /*   By: lzhang2 <lzhang2@student.42.fr>            +#+  +:+       +#+        */
-// /*                                                +#+#+#+#+#+   +#+           */
-// /*   Created: 2024/10/10 15:25:44 by lzhang2           #+#    #+#             */
-// /*   Updated: 2024/10/10 17:07:56 by lzhang2          ###   ########.fr       */
-// /*                                                                            */
-// /* ************************************************************************** */
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   find_executable.c                                  :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: lzhang2 <lzhang2@student.42.fr>            +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/10/13 17:30:39 by lzhang2           #+#    #+#             */
+/*   Updated: 2024/10/13 19:34:49 by lzhang2          ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
-// #include "pipex.h"
+#include "pipex.h"
 
-// #include "pipex.h"
+char	*ft_get_path_env(char **envp)
+{
+	int		i;
 
-// char *get_path_env(char **envp)
-// {
-//     char *path_env;
-//     int i;
+	i = 0;
+	while (envp[i])
+	{
+		if (ft_strncmp(envp[i], "PATH=", 5) == 0)
+			return (envp[i] + 5);
+		i++;
+	}
+	ft_putstr_fd("can't find env path", 2);
+	return (NULL);
+}
 
-//     i = 0;
-//     while (envp[i])
-//     {
-//         if (ft_strncmp(envp[i], "PATH=", 5) == 0)
-//         {
-//             path_env = envp[i] + 5;
-//             return path_env;
-//         }
-//         i++;
-//     }
-//     ft_putstr_fd("can't find env path", 2);
-//     return NULL;
-// }
+char	*build_full_path(const char *dir, const char *command)
+{
+	char	*full_path;
 
-// char **split_paths(char *path_env)
-// {
-//     char **paths;
+	full_path = malloc(ft_strlen(dir) + ft_strlen(command) + 2);
+	if (!full_path)
+		return (NULL);
+	ft_strcpy(full_path, dir);
+	ft_strcat(full_path, "/");
+	ft_strcat(full_path, command);
+	return (full_path);
+}
 
-//     paths = ft_split(path_env, ':');
-//     if (!paths)
-//     {
-//         ft_putstr_fd("Error: split failed\n", 2);
-//         return NULL;
-//     }
-//     return paths;
-// }
+char	*is_accessible(t_prog *prog, char *command)
+{
+	if (access(command, F_OK) == 0)
+	{
+		if (access(command, X_OK) == -1)
+		{
+			perror("Permission denied for commande");
+			ft_free_prog(&prog);
+			exit(126);
+		}
+		return (command);
+	}
+	return (NULL);
+}
 
-// char *check_paths(char **paths, char *command)
-// {
-//     char *full_path;
-//     int i;
+char	*find_executable(t_prog *prog, char *command, char **envp)
+{
+	int		i;
 
-//     i = 0;
-//     while (paths[i])
-//     {
-//         full_path = malloc(strlen(paths[i]) + strlen(command) + 2);
-//         if (!full_path)
-//             return NULL;
-//         strcpy(full_path, paths[i]);
-//         strcat(full_path, "/");
-//         strcat(full_path, command);
-        
-//         ft_printf("%s\n", full_path); // 打印完整路径用于调试
-//         if (access(full_path, X_OK) == 0)
-//         {
-//             ft_free_split(paths);
-//             return full_path;
-//         }
-//         free(full_path);
-//         i++;
-//     }
-//     ft_free_split(paths);
-//     return NULL;
-// }
+	prog->exec.path_env = ft_get_path_env(envp);
+	if (!prog->exec.path_env)
+		return (NULL);
+	prog->exec.paths = ft_split(prog->exec.path_env, ':');
+	if (!prog->exec.paths)
+		return (NULL);
+	i = -1;
+	while (prog->exec.paths [++i])
+	{
+		prog->exec.full_path = build_full_path(prog->exec.paths[i], command);
+		if (prog->exec.full_path)
+		{
+			prog->exec.access_ok = is_accessible(prog, prog->exec.full_path);
+			if (prog->exec.access_ok)
+			{
+				ft_free_split(prog->exec.paths);
+				return (prog->exec.access_ok);
+			}
+			free(prog->exec.full_path);
+		}
+	}
+	ft_free_split(prog->exec.paths);
+	return (NULL);
+}
 
-// char *find_executable(char *command, char **envp)
-// {
-//     char *path_env;
-//     char **paths;
-//     char *path;
+char	*find_abs_cmd(t_prog *prog, char *command)
+{
+	char	*access_ok;
 
-//     path_env = get_path_env(envp);
-//     if (!path_env)
-//         return NULL;
-    
-//     paths = split_paths(path_env);
-//     if (!paths)
-//         return NULL;
-
-//     path = check_paths(paths, command);
-//     return path;
-// }
+	if (command[0] == '.' || command[0] == '/')
+	{
+		access_ok = is_accessible(prog, command);
+		if (access_ok)
+			return (access_ok);
+	}
+	return (NULL);
+}

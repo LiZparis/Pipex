@@ -17,7 +17,7 @@ SRCS 			= $(addprefix $(SRCS_DIR), 	\
 				pipex.c  					\
 				free.c						\
 				find_executable.c			\
-				execute_cmd.c)
+				execute_command.c)
 # SRCS_BONUS = $(BONUS_SRCS_DIR)pipex_bonus.c
 
 OBJS = $(SRCS:.c=.o)
